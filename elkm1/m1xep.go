@@ -12,12 +12,12 @@ import (
 	"time"
 
 	"cloudeng.io/cmdutil/keystore"
-	"gitcom.com/cosnicolaou/elk/elkm1/protocol"
 	"github.com/cosnicolaou/automation/devices"
 	"github.com/cosnicolaou/automation/net/netutil"
 	"github.com/cosnicolaou/automation/net/streamconn"
 	"github.com/cosnicolaou/automation/net/streamconn/telnet"
 	"github.com/cosnicolaou/automation/net/streamconn/tls"
+	"github.com/cosnicolaou/elk/elkm1/protocol"
 	"gopkg.in/yaml.v3"
 )
 

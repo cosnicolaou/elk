@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"gitcom.com/cosnicolaou/elk/elkm1/protocol"
+	"github.com/cosnicolaou/elk/elkm1/protocol"
 )
 
 func TestRealtime(t *testing.T) {

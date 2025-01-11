@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"gitcom.com/cosnicolaou/elk/elkm1/protocol"
 	"github.com/cosnicolaou/automation/devices"
+	"github.com/cosnicolaou/elk/elkm1/protocol"
 	"gopkg.in/yaml.v3"
 )
 
