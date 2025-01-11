@@ -7,7 +7,6 @@ package elkm1
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strconv"
 
 	"gitcom.com/cosnicolaou/elk/elkm1/protocol"
@@ -21,30 +20,17 @@ type ZoneConfig struct {
 
 type Zone struct {
 	m1DeviceBase
-	ZoneConfig
-	logger *slog.Logger
-}
-
-func (z *Zone) CustomConfig() any {
-	return z.ZoneConfig
+	devices.DeviceBase[ZoneConfig]
 }
 
 func (z *Zone) UnmarshalYAML(node *yaml.Node) error {
-	if err := node.Decode(&z.ZoneConfig); err != nil {
+	if err := node.Decode(&z.DeviceConfigCustom); err != nil {
 		return err
 	}
-	if z.ZoneNumber > protocol.NumZones {
-		return fmt.Errorf("invalid zone number: %v", z.ZoneNumber)
+	if zn := z.DeviceConfigCustom.ZoneNumber; zn > protocol.NumZones {
+		return fmt.Errorf("invalid zone number: %v", zn)
 	}
 	return nil
-}
-
-func (s *Zone) Operations() map[string]devices.Operation {
-	return map[string]devices.Operation{}
-}
-
-func (z *Zone) OperationsHelp() map[string]string {
-	return map[string]string{}
 }
 
 func (z *Zone) Conditions() map[string]devices.Condition {
@@ -57,7 +43,20 @@ func (z *Zone) Conditions() map[string]devices.Condition {
 }
 
 func (z *Zone) ConditionsHelp() map[string]string {
-	return map[string]string{}
+	return map[string]string{
+		"normal":   "true if the zone is in a normal state",
+		"violated": "true if the zone is in a violated state",
+		"trouble":  "true if the zone is in a trouble state",
+		"bypassed": "true if the zone is in a bypassed state",
+	}
+}
+
+func NewZone(opts devices.Options) *Zone {
+	return &Zone{
+		m1DeviceBase: m1DeviceBase{logger: opts.Logger.With(
+			"protocol", "elk-m1xep",
+			"device", "elk-m1zone")},
+	}
 }
 
 func (z *Zone) logical(ctx context.Context, opts devices.OperationArgs) (protocol.ZoneStatus, error) {
@@ -65,7 +64,7 @@ func (z *Zone) logical(ctx context.Context, opts devices.OperationArgs) (protoco
 	if err != nil {
 		return 0, err
 	}
-	zn := z.ZoneNumber
+	zn := z.DeviceConfigCustom.ZoneNumber
 	if len(opts.Args) > 0 {
 		zn, err = strconv.Atoi(opts.Args[0])
 		if err != nil {

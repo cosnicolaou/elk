@@ -1,4 +1,4 @@
-module gitcom.com/cosnicolaou/elk
+module github.com/cosnicolaou/elk
 
 go 1.23.1
 

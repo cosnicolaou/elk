@@ -31,9 +31,8 @@ type M1Config struct {
 }
 
 type M1xep struct {
-	devices.ControllerConfigCommon
-	M1Config `yaml:",inline"`
-	logger   *slog.Logger
+	devices.ControllerBase[M1Config]
+	logger *slog.Logger
 
 	mu       sync.Mutex
 	ondemand *netutil.OnDemandConnection[streamconn.Session, *M1xep]
@@ -47,33 +46,20 @@ func NewM1XEP(opts devices.Options) *M1xep {
 	return m1
 }
 
-func (m1 *M1xep) SetConfig(c devices.ControllerConfigCommon) {
-	m1.ControllerConfigCommon = c
-
-}
-
-func (m1 *M1xep) Config() devices.ControllerConfigCommon {
-	return m1.ControllerConfigCommon
-}
-
-func (m1 *M1xep) CustomConfig() any {
-	return m1.M1Config
-}
-
 func (m1 *M1xep) UnmarshalYAML(node *yaml.Node) error {
-	if err := node.Decode(&m1.M1Config); err != nil {
+	if err := node.Decode(&m1.ControllerConfigCustom); err != nil {
 		return err
 	}
 	if m1.Timeout == 0 {
 		return fmt.Errorf("timeout must be specified")
 	}
-	if m1.KeepAlive == 0 {
-		return fmt.Errorf("keep_alive must be specified")
+	switch m1.ControllerConfigCustom.TLSVersion {
+	case "1.0":
+	case "1.2":
+	default:
+		return fmt.Errorf("unsupported tls version: %v", m1.ControllerConfigCustom.TLSVersion)
 	}
-	if m1.TLSVersion != "" {
-
-	}
-	m1.ondemand.SetKeepAlive(m1.KeepAlive)
+	m1.ondemand.SetKeepAlive(m1.ControllerConfigCustom.KeepAlive)
 	return nil
 }
 
@@ -147,12 +133,12 @@ func (m1 *M1xep) OperationsHelp() map[string]string {
 }
 
 func (m1 *M1xep) ConnectTLS(ctx context.Context, idle netutil.IdleReset, version string) (streamconn.Session, error) {
-	transport, err := tls.Dial(ctx, m1.IPAddress, version, m1.Timeout, m1.logger)
+	transport, err := tls.Dial(ctx, m1.ControllerConfigCustom.IPAddress, version, m1.Timeout, m1.logger)
 	if err != nil {
 		return nil, err
 	}
 	session := streamconn.NewSession(transport, idle)
-	keys := keystore.AuthFromContextForID(ctx, m1.KeyID)
+	keys := keystore.AuthFromContextForID(ctx, m1.ControllerConfigCustom.KeyID)
 	if err := protocol.M1XEPLogin(ctx, session, keys.User, keys.Token); err != nil {
 		session.Close(ctx)
 		return nil, err
@@ -161,10 +147,10 @@ func (m1 *M1xep) ConnectTLS(ctx context.Context, idle netutil.IdleReset, version
 }
 
 func (m1 *M1xep) Connect(ctx context.Context, idle netutil.IdleReset) (streamconn.Session, error) {
-	if m1.TLSVersion != "" {
-		return m1.ConnectTLS(ctx, idle, m1.TLSVersion)
+	if m1.ControllerConfigCustom.TLSVersion != "" {
+		return m1.ConnectTLS(ctx, idle, m1.ControllerConfigCustom.TLSVersion)
 	}
-	transport, err := telnet.Dial(ctx, m1.IPAddress, m1.Timeout, m1.logger)
+	transport, err := telnet.Dial(ctx, m1.ControllerConfigCustom.IPAddress, m1.Timeout, m1.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -173,10 +159,6 @@ func (m1 *M1xep) Connect(ctx context.Context, idle netutil.IdleReset) (streamcon
 
 func (m1 *M1xep) Disconnect(ctx context.Context, sess streamconn.Session) error {
 	return sess.Close(ctx)
-}
-
-func (m1 *M1xep) Nil() streamconn.Session {
-	return nil
 }
 
 // Session returns an authenticated session to the QS processor. If
