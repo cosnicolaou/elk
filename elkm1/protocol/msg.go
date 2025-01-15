@@ -165,11 +165,30 @@ func ParseTime(data []byte) (time.Time, bool, error) {
 	return time.Date(year, time.Month(month), day, hours, mins, secs, 0, time.Local), dst, nil
 }
 
+func (r Response) IsXK(buf []byte) (bool, error) {
+	if len(buf) < 4 {
+		return false, fmt.Errorf("message size %v is too short, no size or type bytes", len(buf))
+	}
+	_, pbuf := readHexInt(buf) // message length excludes the length and crlf
+	return pbuf[0] == 'X' && pbuf[1] == 'K', nil
+}
+
 func rpc(ctx context.Context, sess streamconn.Session, req []byte, resp Response) ([]byte, error) {
 	sess.Send(ctx, req)
 	msg := sess.ReadUntil(ctx, "\r\n")
 	if err := sess.Err(); err != nil {
 		return nil, err
+	}
+	ok, err := resp.IsXK(msg)
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		// read the next message.
+		msg = sess.ReadUntil(ctx, "\r\n")
+		if err := sess.Err(); err != nil {
+			return nil, err
+		}
 	}
 	data, err := resp.Expected(msg)
 	if err != nil {

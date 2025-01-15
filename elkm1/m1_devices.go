@@ -12,16 +12,14 @@ import (
 )
 
 func NewController(typ string, opts devices.Options) (devices.Controller, error) {
-	switch typ {
-	case "elk-m1xep":
+	if typ == "elk-m1xep" {
 		return NewM1XEP(opts), nil
 	}
 	return nil, fmt.Errorf("unsupported elk device type %s", typ)
 }
 
 func NewDevice(typ string, opts devices.Options) (devices.Device, error) {
-	switch typ {
-	case "elk-m1zone":
+	if typ == "elk-m1zone" {
 		return NewZone(opts), nil
 	}
 	return nil, fmt.Errorf("unsupported elk m1 device type %s", typ)

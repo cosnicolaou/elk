@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sync"
 	"time"
 
 	"cloudeng.io/cmdutil/keystore"
@@ -34,7 +33,6 @@ type M1xep struct {
 	devices.ControllerBase[M1Config]
 	logger *slog.Logger
 
-	mu       sync.Mutex
 	ondemand *netutil.OnDemandConnection[streamconn.Session, *M1xep]
 }
 
@@ -93,6 +91,7 @@ func (m1 *M1xep) GetZoneNames(ctx context.Context, args devices.OperationArgs) e
 	names := []string{}
 	for i, def := range defs {
 		if def == protocol.DisabledZoneType {
+			names = append(names, "disabled")
 			continue
 		}
 		z := i + 1
@@ -138,6 +137,9 @@ func (m1 *M1xep) ConnectTLS(ctx context.Context, idle netutil.IdleReset, version
 		return nil, err
 	}
 	session := streamconn.NewSession(transport, idle)
+	if m1.ControllerConfigCustom.KeyID == "not-set" {
+		return session, nil
+	}
 	keys := keystore.AuthFromContextForID(ctx, m1.ControllerConfigCustom.KeyID)
 	if err := protocol.M1XEPLogin(ctx, session, keys.User, keys.Token); err != nil {
 		session.Close(ctx)
