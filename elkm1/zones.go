@@ -36,6 +36,8 @@ func (z *Zone) UnmarshalYAML(node *yaml.Node) error {
 func (z *Zone) Conditions() map[string]devices.Condition {
 	return map[string]devices.Condition{
 		"normal":   z.Normal,
+		"closed":   z.Normal,
+		"open":     z.Violated,
 		"violated": z.Violated,
 		"trouble":  z.Trouble,
 		"bypassed": z.Bypassed,
@@ -45,6 +47,8 @@ func (z *Zone) Conditions() map[string]devices.Condition {
 func (z *Zone) ConditionsHelp() map[string]string {
 	return map[string]string{
 		"normal":   "true if the zone is in a normal state",
+		"closed":   "true if the zone is in a normal state",
+		"open":     "true if the zone is in a violated state",
 		"violated": "true if the zone is in a violated state",
 		"trouble":  "true if the zone is in a trouble state",
 		"bypassed": "true if the zone is in a bypassed state",
@@ -74,34 +78,34 @@ func (z *Zone) logical(ctx context.Context, opts devices.OperationArgs) (protoco
 	return status[zn-1], nil
 }
 
-func (z *Zone) Normal(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+func (z *Zone) Normal(ctx context.Context, opts devices.OperationArgs) (any, bool, error) {
 	status, err := z.logical(ctx, opts)
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
-	return status.Logical() == protocol.ZoneNormal, nil
+	return nil, status.Logical() == protocol.ZoneNormal, nil
 }
 
-func (z *Zone) Violated(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+func (z *Zone) Violated(ctx context.Context, opts devices.OperationArgs) (any, bool, error) {
 	status, err := z.logical(ctx, opts)
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
-	return status.Logical() == protocol.ZoneViolated, nil
+	return nil, status.Logical() == protocol.ZoneViolated, nil
 }
 
-func (z *Zone) Trouble(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+func (z *Zone) Trouble(ctx context.Context, opts devices.OperationArgs) (any, bool, error) {
 	status, err := z.logical(ctx, opts)
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
-	return status.Logical() == protocol.ZoneTrouble, nil
+	return nil, status.Logical() == protocol.ZoneTrouble, nil
 }
 
-func (z *Zone) Bypassed(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+func (z *Zone) Bypassed(ctx context.Context, opts devices.OperationArgs) (any, bool, error) {
 	status, err := z.logical(ctx, opts)
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
-	return status.Logical() == protocol.ZoneBypassed, nil
+	return nil, status.Logical() == protocol.ZoneBypassed, nil
 }
