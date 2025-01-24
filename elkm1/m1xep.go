@@ -67,7 +67,7 @@ func (m1 *M1xep) Implementation() any {
 
 func (m1 *M1xep) Operations() map[string]devices.Operation {
 	return map[string]devices.Operation{
-		"gettime": func(ctx context.Context, args devices.OperationArgs) error {
+		"gettime": func(ctx context.Context, args devices.OperationArgs) (any, error) {
 			t, dst, err := protocol.GetTime(ctx, m1.Session(ctx))
 			dstMsg := "(standard time)"
 			if !dst {
@@ -76,17 +76,19 @@ func (m1 *M1xep) Operations() map[string]devices.Operation {
 			if err == nil {
 				fmt.Fprintf(args.Writer, "gettime: %v %v\n", t, dstMsg)
 			}
-			return err
+			return struct {
+				Time string `json:"time"`
+			}{Time: t.String()}, err
 		},
 		"zonenames":  m1.GetZoneNames,
 		"zonestatus": m1.GetZoneStatus,
 	}
 }
 
-func (m1 *M1xep) GetZoneNames(ctx context.Context, args devices.OperationArgs) error {
+func (m1 *M1xep) GetZoneNames(ctx context.Context, args devices.OperationArgs) (any, error) {
 	defs, err := protocol.GetZoneDefinitions(ctx, m1.Session(ctx))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	names := []string{}
 	for i, def := range defs {
@@ -97,7 +99,7 @@ func (m1 *M1xep) GetZoneNames(ctx context.Context, args devices.OperationArgs) e
 		z := i + 1
 		name, err := protocol.GetZoneName(ctx, m1.Session(ctx), z)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		names = append(names, name)
 	}
@@ -107,13 +109,13 @@ func (m1 *M1xep) GetZoneNames(ctx context.Context, args devices.OperationArgs) e
 		}
 		fmt.Fprintf(args.Writer, "zone %v: %v: %v\n", i+1, def, names[i])
 	}
-	return nil
+	return defs, nil
 }
 
-func (m1 *M1xep) GetZoneStatus(ctx context.Context, args devices.OperationArgs) error {
+func (m1 *M1xep) GetZoneStatus(ctx context.Context, args devices.OperationArgs) (any, error) {
 	status, err := protocol.GetZoneStatusAll(ctx, m1.Session(ctx))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for i, s := range status {
 		if s.Physical() == protocol.ZoneUnconfigured {
@@ -121,7 +123,7 @@ func (m1 *M1xep) GetZoneStatus(ctx context.Context, args devices.OperationArgs) 
 		}
 		fmt.Fprintf(args.Writer, "zone %v: %v\n", i+1, s)
 	}
-	return nil
+	return status, nil
 }
 func (m1 *M1xep) OperationsHelp() map[string]string {
 	return map[string]string{
