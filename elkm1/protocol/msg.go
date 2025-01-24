@@ -173,21 +173,28 @@ func (r Response) IsXK(buf []byte) (bool, error) {
 	return pbuf[0] == 'X' && pbuf[1] == 'K', nil
 }
 
+func (r Response) IsExpected(buf []byte) (bool, error) {
+	if len(buf) < 4 {
+		return false, fmt.Errorf("message size %v is too short, no size or type bytes", len(buf))
+	}
+	_, pbuf := readHexInt(buf) // message length excludes the length and crlf
+	return pbuf[0] == r.Type && pbuf[1] == r.SubType, nil
+}
+
 func rpc(ctx context.Context, sess streamconn.Session, req []byte, resp Response) ([]byte, error) {
 	sess.Send(ctx, req)
-	msg := sess.ReadUntil(ctx, "\r\n")
-	if err := sess.Err(); err != nil {
-		return nil, err
-	}
-	ok, err := resp.IsXK(msg)
-	if err != nil {
-		return nil, err
-	}
-	if ok {
-		// read the next message.
+	var msg []byte
+	for {
 		msg = sess.ReadUntil(ctx, "\r\n")
 		if err := sess.Err(); err != nil {
 			return nil, err
+		}
+		ok, err := resp.IsExpected(msg)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			break
 		}
 	}
 	data, err := resp.Expected(msg)

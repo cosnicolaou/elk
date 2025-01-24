@@ -85,6 +85,12 @@ func (m1 *M1xep) Operations() map[string]devices.Operation {
 	}
 }
 
+type ZoneInfo struct {
+	Zone   int    `json:"zone"`
+	Name   string `json:"name,omitempty"`
+	Status string `json:"status,omitempty"`
+}
+
 func (m1 *M1xep) GetZoneNames(ctx context.Context, args devices.OperationArgs) (any, error) {
 	defs, err := protocol.GetZoneDefinitions(ctx, m1.Session(ctx))
 	if err != nil {
@@ -103,13 +109,16 @@ func (m1 *M1xep) GetZoneNames(ctx context.Context, args devices.OperationArgs) (
 		}
 		names = append(names, name)
 	}
+
+	zi := []ZoneInfo{}
 	for i, def := range defs {
 		if def == protocol.DisabledZoneType {
 			continue
 		}
+		zi = append(zi, ZoneInfo{Zone: i + 1, Name: names[i]})
 		fmt.Fprintf(args.Writer, "zone %v: %v: %v\n", i+1, def, names[i])
 	}
-	return defs, nil
+	return zi, nil
 }
 
 func (m1 *M1xep) GetZoneStatus(ctx context.Context, args devices.OperationArgs) (any, error) {
@@ -117,14 +126,17 @@ func (m1 *M1xep) GetZoneStatus(ctx context.Context, args devices.OperationArgs) 
 	if err != nil {
 		return nil, err
 	}
+	zi := []ZoneInfo{}
 	for i, s := range status {
 		if s.Physical() == protocol.ZoneUnconfigured {
 			continue
 		}
+		zi = append(zi, ZoneInfo{Zone: i + 1, Status: s.String()})
 		fmt.Fprintf(args.Writer, "zone %v: %v\n", i+1, s)
 	}
-	return status, nil
+	return zi, nil
 }
+
 func (m1 *M1xep) OperationsHelp() map[string]string {
 	return map[string]string{
 		"gettime":    "get the current time from the M1XEP",
