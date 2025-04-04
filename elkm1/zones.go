@@ -75,6 +75,15 @@ func (z *Zone) logical(ctx context.Context, opts devices.OperationArgs) (protoco
 			return 0, fmt.Errorf("invalid zone number: %v: %w", opts.Args[0], err)
 		}
 	}
+	if zn < 0 || zn > protocol.NumZones {
+		return 0, fmt.Errorf("invalid zone number: %v", zn)
+	}
+	if opts.Writer != nil {
+		_, _ = opts.Writer.Write(fmt.Appendf(nil, "zone: %v, status %v", zn, status[zn-1]))
+	}
+	if z.logger != nil {
+		z.logger.Info("zone-status", "zone", zn, "status", status[zn-1])
+	}
 	return status[zn-1], nil
 }
 
