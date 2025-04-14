@@ -7,7 +7,6 @@ package elkm1
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"cloudeng.io/cmdutil/keystore"
@@ -31,17 +30,17 @@ type M1Config struct {
 
 type M1xep struct {
 	devices.ControllerBase[M1Config]
-	logger *slog.Logger
-
 	ondemand *netutil.OnDemandConnection[streamconn.Session, *M1xep]
 }
 
 func NewM1XEP(opts devices.Options) *M1xep {
-	m1 := &M1xep{
-		logger: opts.Logger.With("protocol", "elk-m1xep"),
-	}
+	m1 := &M1xep{}
 	m1.ondemand = netutil.NewOnDemandConnection(m1, streamconn.NewErrorSession)
 	return m1
+}
+
+func (m1 *M1xep) loggingContext(ctx context.Context) context.Context {
+	return devices.ContextWithLoggerAttributes(ctx, "protocol", "elk-m1xep")
 }
 
 func (m1 *M1xep) UnmarshalYAML(node *yaml.Node) error {
@@ -68,6 +67,7 @@ func (m1 *M1xep) Implementation() any {
 func (m1 *M1xep) Operations() map[string]devices.Operation {
 	return map[string]devices.Operation{
 		"gettime": func(ctx context.Context, args devices.OperationArgs) (any, error) {
+			ctx = m1.loggingContext(ctx)
 			t, dst, err := protocol.GetTime(ctx, m1.Session(ctx))
 			dstMsg := "(standard time)"
 			if !dst {
@@ -92,6 +92,7 @@ type ZoneInfo struct {
 }
 
 func (m1 *M1xep) GetZoneNames(ctx context.Context, args devices.OperationArgs) (any, error) {
+	ctx = m1.loggingContext(ctx)
 	defs, err := protocol.GetZoneDefinitions(ctx, m1.Session(ctx))
 	if err != nil {
 		return nil, err
@@ -122,6 +123,7 @@ func (m1 *M1xep) GetZoneNames(ctx context.Context, args devices.OperationArgs) (
 }
 
 func (m1 *M1xep) GetZoneStatus(ctx context.Context, args devices.OperationArgs) (any, error) {
+	ctx = m1.loggingContext(ctx)
 	status, err := protocol.GetZoneStatusAll(ctx, m1.Session(ctx))
 	if err != nil {
 		return nil, err
@@ -146,7 +148,8 @@ func (m1 *M1xep) OperationsHelp() map[string]string {
 }
 
 func (m1 *M1xep) ConnectTLS(ctx context.Context, idle netutil.IdleReset, version string) (streamconn.Session, error) {
-	transport, err := tls.Dial(ctx, m1.ControllerConfigCustom.IPAddress, version, m1.Timeout, m1.logger)
+	ctx = m1.loggingContext(ctx)
+	transport, err := tls.Dial(ctx, m1.ControllerConfigCustom.IPAddress, version, m1.Timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +169,7 @@ func (m1 *M1xep) Connect(ctx context.Context, idle netutil.IdleReset) (streamcon
 	if m1.ControllerConfigCustom.TLSVersion != "" {
 		return m1.ConnectTLS(ctx, idle, m1.ControllerConfigCustom.TLSVersion)
 	}
-	transport, err := telnet.Dial(ctx, m1.ControllerConfigCustom.IPAddress, m1.Timeout, m1.logger)
+	transport, err := telnet.Dial(ctx, m1.ControllerConfigCustom.IPAddress, m1.Timeout)
 	if err != nil {
 		return nil, err
 	}
