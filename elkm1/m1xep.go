@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cloudeng.io/cmdutil/keystore"
+	"cloudeng.io/logging/ctxlog"
 	"github.com/cosnicolaou/automation/devices"
 	"github.com/cosnicolaou/automation/net/netutil"
 	"github.com/cosnicolaou/automation/net/streamconn"
@@ -39,10 +40,6 @@ func NewM1XEP(opts devices.Options) *M1xep {
 	return m1
 }
 
-func (m1 *M1xep) loggingContext(ctx context.Context) context.Context {
-	return devices.ContextWithLoggerAttributes(ctx, "protocol", "elk-m1xep")
-}
-
 func (m1 *M1xep) UnmarshalYAML(node *yaml.Node) error {
 	if err := node.Decode(&m1.ControllerConfigCustom); err != nil {
 		return err
@@ -67,8 +64,8 @@ func (m1 *M1xep) Implementation() any {
 func (m1 *M1xep) Operations() map[string]devices.Operation {
 	return map[string]devices.Operation{
 		"gettime": func(ctx context.Context, args devices.OperationArgs) (any, error) {
-			ctx = m1.loggingContext(ctx)
-			t, dst, err := protocol.GetTime(ctx, m1.Session(ctx))
+			ctx, sess := m1.Session(ctx)
+			t, dst, err := protocol.GetTime(ctx, sess)
 			dstMsg := "(standard time)"
 			if !dst {
 				dstMsg = "(daylight saving time)"
@@ -92,8 +89,8 @@ type ZoneInfo struct {
 }
 
 func (m1 *M1xep) GetZoneNames(ctx context.Context, args devices.OperationArgs) (any, error) {
-	ctx = m1.loggingContext(ctx)
-	defs, err := protocol.GetZoneDefinitions(ctx, m1.Session(ctx))
+	ctx, sess := m1.Session(ctx)
+	defs, err := protocol.GetZoneDefinitions(ctx, sess)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +101,7 @@ func (m1 *M1xep) GetZoneNames(ctx context.Context, args devices.OperationArgs) (
 			continue
 		}
 		z := i + 1
-		name, err := protocol.GetZoneName(ctx, m1.Session(ctx), z)
+		name, err := protocol.GetZoneName(ctx, sess, z)
 		if err != nil {
 			return nil, err
 		}
@@ -123,8 +120,8 @@ func (m1 *M1xep) GetZoneNames(ctx context.Context, args devices.OperationArgs) (
 }
 
 func (m1 *M1xep) GetZoneStatus(ctx context.Context, args devices.OperationArgs) (any, error) {
-	ctx = m1.loggingContext(ctx)
-	status, err := protocol.GetZoneStatusAll(ctx, m1.Session(ctx))
+	ctx, sess := m1.Session(ctx)
+	status, err := protocol.GetZoneStatusAll(ctx, sess)
 	if err != nil {
 		return nil, err
 	}
@@ -147,8 +144,7 @@ func (m1 *M1xep) OperationsHelp() map[string]string {
 	}
 }
 
-func (m1 *M1xep) ConnectTLS(ctx context.Context, idle netutil.IdleReset, version string) (streamconn.Session, error) {
-	ctx = m1.loggingContext(ctx)
+func (m1 *M1xep) connectTLS(ctx context.Context, idle netutil.IdleReset, version string) (streamconn.Session, error) {
 	transport, err := tls.Dial(ctx, m1.ControllerConfigCustom.IPAddress, version, m1.Timeout)
 	if err != nil {
 		return nil, err
@@ -167,7 +163,7 @@ func (m1 *M1xep) ConnectTLS(ctx context.Context, idle netutil.IdleReset, version
 
 func (m1 *M1xep) Connect(ctx context.Context, idle netutil.IdleReset) (streamconn.Session, error) {
 	if m1.ControllerConfigCustom.TLSVersion != "" {
-		return m1.ConnectTLS(ctx, idle, m1.ControllerConfigCustom.TLSVersion)
+		return m1.connectTLS(ctx, idle, m1.ControllerConfigCustom.TLSVersion)
 	}
 	transport, err := telnet.Dial(ctx, m1.ControllerConfigCustom.IPAddress, m1.Timeout)
 	if err != nil {
@@ -180,12 +176,18 @@ func (m1 *M1xep) Disconnect(ctx context.Context, sess streamconn.Session) error 
 	return sess.Close(ctx)
 }
 
+func (m1 *M1xep) loggingContext(ctx context.Context) context.Context {
+	return ctxlog.ContextWith(ctx, "protocol", "elk-m1xep")
+}
+
 // Session returns an authenticated session to the QS processor. If
 // an error is encountered then an error session is returned.
-func (m1 *M1xep) Session(ctx context.Context) streamconn.Session {
-	return m1.ondemand.Connection(ctx)
+func (m1 *M1xep) Session(ctx context.Context) (context.Context, streamconn.Session) {
+	ctx = m1.loggingContext(ctx)
+	return ctx, m1.ondemand.Connection(ctx)
 }
 
 func (m1 *M1xep) Close(ctx context.Context) error {
+	ctx = m1.loggingContext(ctx)
 	return m1.ondemand.Close(ctx)
 }

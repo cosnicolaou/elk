@@ -55,16 +55,15 @@ func (z *Zone) ConditionsHelp() map[string]string {
 	}
 }
 
-func NewZone(opts devices.Options) *Zone {
+func NewZone(_ devices.Options) *Zone {
 	return &Zone{
-		m1DeviceBase: m1DeviceBase{logger: opts.Logger.With(
-			"protocol", "elk-m1xep",
-			"device", "elk-m1zone")},
+		m1DeviceBase: m1DeviceBase{},
 	}
 }
 
 func (z *Zone) logical(ctx context.Context, opts devices.OperationArgs) (protocol.ZoneStatus, error) {
-	status, err := protocol.GetZoneStatusAll(ctx, z.m1.Session(ctx))
+	ctx, sess := z.m1.Session(ctx)
+	status, err := protocol.GetZoneStatusAll(ctx, sess)
 	if err != nil {
 		return 0, err
 	}
