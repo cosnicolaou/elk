@@ -34,7 +34,7 @@ type M1xep struct {
 	ondemand *netutil.OnDemandConnection[streamconn.Session, *M1xep]
 }
 
-func NewM1XEP(opts devices.Options) *M1xep {
+func NewM1XEP(_ devices.Options) *M1xep {
 	m1 := &M1xep{}
 	m1.ondemand = netutil.NewOnDemandConnection(m1, streamconn.NewErrorSession)
 	return m1
