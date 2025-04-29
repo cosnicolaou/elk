@@ -177,7 +177,7 @@ func (m1 *M1xep) Disconnect(ctx context.Context, sess streamconn.Session) error 
 }
 
 func (m1 *M1xep) loggingContext(ctx context.Context) context.Context {
-	return ctxlog.ContextWith(ctx, "protocol", "elk-m1xep")
+	return ctxlog.WithAttributes(ctx, "protocol", "elk-m1xep")
 }
 
 // Session returns an authenticated session to the QS processor. If
