@@ -62,7 +62,11 @@ func NewZone(_ devices.Options) *Zone {
 }
 
 func (z *Zone) logical(ctx context.Context, opts devices.OperationArgs) (protocol.ZoneStatus, error) {
-	ctx, sess := z.m1.Session(ctx)
+	ctx, sess, err := z.m1.session(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer sess.Release()
 	status, err := protocol.GetZoneStatusAll(ctx, sess)
 	if err != nil {
 		return 0, err

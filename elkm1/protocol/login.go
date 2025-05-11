@@ -26,22 +26,28 @@ var (
 	passwordPromptBytes = []byte(passwordPrompt)
 )
 
-func M1XEPLogin(ctx context.Context, s streamconn.Session, user, pass string) error {
+func M1XEPLogin(ctx context.Context, s *streamconn.Session, user, pass string) error {
 	if user == "not-set" && pass == "not-set" {
 		return nil
 	}
-	resp := s.ReadUntil(ctx, usernamePrompt, "\r\n")
+	resp, err := s.ReadUntil(ctx, usernamePrompt, "\r\n")
+	if err != nil {
+		return err
+	}
 	if !bytes.Contains(resp, usernamePromptBytes) {
 		return ErrM1XEPLogin
 	}
 	s.Send(ctx, []byte(user+"\r\n"))
-	resp = s.ReadUntil(ctx, passwordPrompt, "\r\n")
+	resp, err = s.ReadUntil(ctx, passwordPrompt, "\r\n")
+	if err != nil {
+		return err
+	}
 	if !bytes.Contains(resp, passwordPromptBytes) {
 		return ErrM1XEPLogin
 	}
 	s.SendSensitive(ctx, []byte(pass+"\r\n"))
-	resp = s.ReadUntil(ctx, loginSucessStr, usernamePrompt, "\r\n")
-	if err := s.Err(); err != nil {
+	resp, err = s.ReadUntil(ctx, loginSucessStr, usernamePrompt, "\r\n")
+	if err != nil {
 		if errors.Is(err, io.EOF) {
 			return fmt.Errorf("user %v: %w", user, ErrM1XEPLogin)
 		}
