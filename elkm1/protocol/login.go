@@ -47,7 +47,7 @@ func M1XEPLogin(ctx context.Context, s *streamconn.Session, user, pass string) e
 	}
 	s.SendSensitive(ctx, []byte(pass+"\r\n"))
 	resp, err = s.ReadUntil(ctx, loginSucessStr, usernamePrompt, "\r\n")
-	if err := s.Err(); err != nil {
+	if err != nil {
 		if errors.Is(err, io.EOF) {
 			return fmt.Errorf("user %v: %w", user, ErrM1XEPLogin)
 		}
