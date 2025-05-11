@@ -15,7 +15,7 @@ var (
 	request Request
 )
 
-func GetTime(ctx context.Context, sess streamconn.Session) (time.Time, bool, error) {
+func GetTime(ctx context.Context, sess *streamconn.Session) (time.Time, bool, error) {
 	req, resp := request.RealTime()
 	data, err := rpc(ctx, sess, req, resp)
 	if err != nil {

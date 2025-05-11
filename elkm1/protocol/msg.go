@@ -181,12 +181,13 @@ func (r Response) IsExpected(buf []byte) (bool, error) {
 	return pbuf[0] == r.Type && pbuf[1] == r.SubType, nil
 }
 
-func rpc(ctx context.Context, sess streamconn.Session, req []byte, resp Response) ([]byte, error) {
+func rpc(ctx context.Context, sess *streamconn.Session, req []byte, resp Response) ([]byte, error) {
 	sess.Send(ctx, req)
 	var msg []byte
 	for {
-		msg = sess.ReadUntil(ctx, "\r\n")
-		if err := sess.Err(); err != nil {
+		var err error
+		msg, err = sess.ReadUntil(ctx, "\r\n")
+		if err != nil {
 			return nil, err
 		}
 		ok, err := resp.IsExpected(msg)

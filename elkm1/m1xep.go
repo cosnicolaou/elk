@@ -31,12 +31,15 @@ type M1Config struct {
 
 type M1xep struct {
 	devices.ControllerBase[M1Config]
-	ondemand *netutil.OnDemandConnection[streamconn.Session, *M1xep]
+	mgr      *streamconn.SessionManager
+	ondemand *netutil.OnDemandConnection[streamconn.Transport, *M1xep]
 }
 
 func NewM1XEP(_ devices.Options) *M1xep {
-	m1 := &M1xep{}
-	m1.ondemand = netutil.NewOnDemandConnection(m1, streamconn.NewErrorSession)
+	m1 := &M1xep{
+		mgr: &streamconn.SessionManager{},
+	}
+	m1.ondemand = netutil.NewOnDemandConnection(m1)
 	return m1
 }
 
@@ -61,25 +64,35 @@ func (m1 *M1xep) Implementation() any {
 	return m1
 }
 
+func (m1 *M1xep) OperationsHelp() map[string]string {
+	return map[string]string{
+		"gettime":    "get the current time from the M1XEP",
+		"zonenames":  "get the names of all zones",
+		"zonestatus": "get the status of all zones",
+	}
+}
+
 func (m1 *M1xep) Operations() map[string]devices.Operation {
 	return map[string]devices.Operation{
 		"gettime": func(ctx context.Context, args devices.OperationArgs) (any, error) {
-			ctx, sess := m1.Session(ctx)
-			t, dst, err := protocol.GetTime(ctx, sess)
-			dstMsg := "(standard time)"
-			if !dst {
-				dstMsg = "(daylight saving time)"
-			}
-			if err == nil {
-				fmt.Fprintf(args.Writer, "gettime: %v %v\n", t, dstMsg)
-			}
-			return struct {
-				Time string `json:"time"`
-			}{Time: t.String()}, err
+			return m1.runOperation(ctx, m1.getTime, args)
 		},
-		"zonenames":  m1.GetZoneNames,
-		"zonestatus": m1.GetZoneStatus,
+		"zonenames": func(ctx context.Context, args devices.OperationArgs) (any, error) {
+			return m1.runOperation(ctx, m1.getZoneNames, args)
+		},
+		"zonestatus": func(ctx context.Context, args devices.OperationArgs) (any, error) {
+			return m1.runOperation(ctx, m1.getZoneStatus, args)
+		},
 	}
+}
+
+func (m1 *M1xep) runOperation(ctx context.Context, op func(context.Context, *streamconn.Session, devices.OperationArgs) (any, error), args devices.OperationArgs) (any, error) {
+	ctx, sess, err := m1.session(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer sess.Release()
+	return op(ctx, sess, args)
 }
 
 type ZoneInfo struct {
@@ -88,8 +101,21 @@ type ZoneInfo struct {
 	Status string `json:"status,omitempty"`
 }
 
-func (m1 *M1xep) GetZoneNames(ctx context.Context, args devices.OperationArgs) (any, error) {
-	ctx, sess := m1.Session(ctx)
+func (m1 *M1xep) getTime(ctx context.Context, sess *streamconn.Session, args devices.OperationArgs) (any, error) {
+	t, dst, err := protocol.GetTime(ctx, sess)
+	dstMsg := "(standard time)"
+	if !dst {
+		dstMsg = "(daylight saving time)"
+	}
+	if err == nil {
+		fmt.Fprintf(args.Writer, "gettime: %v %v\n", t, dstMsg)
+	}
+	return struct {
+		Time string `json:"time"`
+	}{Time: t.String()}, err
+}
+
+func (m1 *M1xep) getZoneNames(ctx context.Context, sess *streamconn.Session, args devices.OperationArgs) (any, error) {
 	defs, err := protocol.GetZoneDefinitions(ctx, sess)
 	if err != nil {
 		return nil, err
@@ -119,8 +145,7 @@ func (m1 *M1xep) GetZoneNames(ctx context.Context, args devices.OperationArgs) (
 	return zi, nil
 }
 
-func (m1 *M1xep) GetZoneStatus(ctx context.Context, args devices.OperationArgs) (any, error) {
-	ctx, sess := m1.Session(ctx)
+func (m1 *M1xep) getZoneStatus(ctx context.Context, sess *streamconn.Session, args devices.OperationArgs) (any, error) {
 	status, err := protocol.GetZoneStatusAll(ctx, sess)
 	if err != nil {
 		return nil, err
@@ -136,58 +161,51 @@ func (m1 *M1xep) GetZoneStatus(ctx context.Context, args devices.OperationArgs) 
 	return zi, nil
 }
 
-func (m1 *M1xep) OperationsHelp() map[string]string {
-	return map[string]string{
-		"gettime":    "get the current time from the M1XEP",
-		"zonenames":  "get the names of all zones",
-		"zonestatus": "get the status of all zones",
-	}
-}
-
-func (m1 *M1xep) connectTLS(ctx context.Context, idle netutil.IdleReset, version string) (streamconn.Session, error) {
-	transport, err := tls.Dial(ctx, m1.ControllerConfigCustom.IPAddress, version, m1.Timeout)
+func (m1 *M1xep) connectTLS(ctx context.Context, idle netutil.IdleReset, version string) (streamconn.Transport, error) {
+	conn, err := tls.Dial(ctx, m1.ControllerConfigCustom.IPAddress, version, m1.Timeout)
 	if err != nil {
 		return nil, err
 	}
-	session := streamconn.NewSession(transport, idle)
+	session := m1.mgr.New(conn, idle)
+	defer session.Release()
 	if m1.ControllerConfigCustom.KeyID == "not-set" {
-		return session, nil
+		return conn, nil
 	}
 	keys := keystore.AuthFromContextForID(ctx, m1.ControllerConfigCustom.KeyID)
 	if err := protocol.M1XEPLogin(ctx, session, keys.User, keys.Token); err != nil {
-		session.Close(ctx)
+		conn.Close(ctx)
 		return nil, err
 	}
-	return session, nil
+	return conn, nil
 }
 
-func (m1 *M1xep) Connect(ctx context.Context, idle netutil.IdleReset) (streamconn.Session, error) {
+func (m1 *M1xep) Connect(ctx context.Context, idle netutil.IdleReset) (streamconn.Transport, error) {
 	if m1.ControllerConfigCustom.TLSVersion != "" {
 		return m1.connectTLS(ctx, idle, m1.ControllerConfigCustom.TLSVersion)
 	}
-	transport, err := telnet.Dial(ctx, m1.ControllerConfigCustom.IPAddress, m1.Timeout)
+	conn, err := telnet.Dial(ctx, m1.ControllerConfigCustom.IPAddress, m1.Timeout)
 	if err != nil {
 		return nil, err
 	}
-	return streamconn.NewSession(transport, idle), nil
+	return conn, nil
 }
 
-func (m1 *M1xep) Disconnect(ctx context.Context, sess streamconn.Session) error {
-	return sess.Close(ctx)
-}
-
-func (m1 *M1xep) loggingContext(ctx context.Context) context.Context {
-	return ctxlog.WithAttributes(ctx, "protocol", "elk-m1xep")
+func (m1 *M1xep) Disconnect(ctx context.Context, conn streamconn.Transport) error {
+	return conn.Close(ctx)
 }
 
 // Session returns an authenticated session to the QS processor. If
 // an error is encountered then an error session is returned.
-func (m1 *M1xep) Session(ctx context.Context) (context.Context, streamconn.Session) {
-	ctx = m1.loggingContext(ctx)
-	return ctx, m1.ondemand.Connection(ctx)
+func (m1 *M1xep) session(ctx context.Context) (context.Context, *streamconn.Session, error) {
+	ctx = ctxlog.WithAttributes(ctx, "protocol", "elk-m1xep")
+	conn, idle, err := m1.ondemand.Connection(ctx)
+	if err != nil {
+		return ctx, nil, err
+	}
+	session := m1.mgr.New(conn, idle)
+	return ctx, session, nil
 }
 
 func (m1 *M1xep) Close(ctx context.Context) error {
-	ctx = m1.loggingContext(ctx)
 	return m1.ondemand.Close(ctx)
 }

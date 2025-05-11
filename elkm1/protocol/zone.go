@@ -106,7 +106,7 @@ func (z ZoneDef) String() string {
 
 type ZoneDefs [NumZones]ZoneDef
 
-func GetZoneDefinitions(ctx context.Context, sess streamconn.Session) (ZoneDefs, error) {
+func GetZoneDefinitions(ctx context.Context, sess *streamconn.Session) (ZoneDefs, error) {
 	req, resp := request.ZoneDefinitions()
 	data, err := rpc(ctx, sess, req, resp)
 	if err != nil {
@@ -122,7 +122,7 @@ func GetZoneDefinitions(ctx context.Context, sess streamconn.Session) (ZoneDefs,
 	return defs, nil
 }
 
-func GetZoneName(ctx context.Context, sess streamconn.Session, zone int) (string, error) {
+func GetZoneName(ctx context.Context, sess *streamconn.Session, zone int) (string, error) {
 	req, resp := request.ZoneName(zone)
 	data, err := rpc(ctx, sess, req, resp)
 	if err != nil {
@@ -192,7 +192,7 @@ type ZoneStatusAll [NumZones]ZoneStatus
 
 // GetZoneStatusAll returns the status of all zones, it should not be used for
 // polling.
-func GetZoneStatusAll(ctx context.Context, sess streamconn.Session) (ZoneStatusAll, error) {
+func GetZoneStatusAll(ctx context.Context, sess *streamconn.Session) (ZoneStatusAll, error) {
 	req, resp := request.ZoneStatus()
 	data, err := rpc(ctx, sess, req, resp)
 	if err != nil {
