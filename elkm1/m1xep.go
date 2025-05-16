@@ -166,8 +166,9 @@ func (m1 *M1xep) connectTLS(ctx context.Context, idle netutil.IdleReset, version
 	if err != nil {
 		return nil, err
 	}
-	session := m1.mgr.New(conn, idle)
+	ctx, session := m1.mgr.NewWithContext(ctx, conn, idle)
 	defer session.Release()
+
 	if m1.ControllerConfigCustom.KeyID == "not-set" {
 		return conn, nil
 	}
@@ -202,7 +203,7 @@ func (m1 *M1xep) session(ctx context.Context) (context.Context, *streamconn.Sess
 	if err != nil {
 		return ctx, nil, err
 	}
-	session := m1.mgr.New(conn, idle)
+	ctx, session := m1.mgr.NewWithContext(ctx, conn, idle)
 	return ctx, session, nil
 }
 
