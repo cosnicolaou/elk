@@ -7,7 +7,7 @@ toolchain go1.24.2
 require (
 	cloudeng.io/cmdutil v0.0.0-20250428223124-bb967ac9f3f8
 	cloudeng.io/logging v0.0.0-20250428223124-bb967ac9f3f8
-	github.com/cosnicolaou/automation v0.0.0-20250511224936-0ce968442790
+	github.com/cosnicolaou/automation v0.0.0-20250516220144-b6f3bad30206
 	gopkg.in/yaml.v3 v3.0.1
 )
 
