@@ -1,9 +1,13 @@
 cloudeng.io/cmdutil v0.0.0-20250428223124-bb967ac9f3f8 h1:hs9tFbld9uuuOzr++6JS6LuF4ZHylYuRdzllwN70+Go=
 cloudeng.io/cmdutil v0.0.0-20250428223124-bb967ac9f3f8/go.mod h1:cdA+lzBTdzRDglLOacu63J+tgu/TO3IQ8jGskda6ntQ=
+cloudeng.io/cmdutil v0.0.0-20250820215211-e1b65c305908 h1:+U4JreDskuIJlC0uTdRIDqZG5EYkhnQefrTZaPQmG5c=
+cloudeng.io/cmdutil v0.0.0-20250820215211-e1b65c305908/go.mod h1:DPmPt2BHWbkbVQ96AwvESlACDFHncHvXNqdFs0/e/68=
 cloudeng.io/datetime v0.0.0-20250428223124-bb967ac9f3f8 h1:xVC3pb9nvLDhc0MFWxmYkEBHM1gh2dKqdLsBsYWQmto=
 cloudeng.io/datetime v0.0.0-20250428223124-bb967ac9f3f8/go.mod h1:/vJ5Opdclc6UQ0nypL8y1EENDITc+JsV3k43pi/H6NU=
 cloudeng.io/file v0.0.0-20250428223124-bb967ac9f3f8 h1:+UoQbuslTATAty78yj7O5Su27aZfrMUj0p01YJQF7XE=
 cloudeng.io/file v0.0.0-20250428223124-bb967ac9f3f8/go.mod h1:oim2jVljgZXzwJJSywUcdyROOSEvhLjIQvKDv+79tVI=
+cloudeng.io/file v0.0.0-20250609000856-e90addcdd7e2 h1:foUmuGAnWjjL3JsHoWGOVqMnxXjQICyyPATUPs+HLvc=
+cloudeng.io/file v0.0.0-20250609000856-e90addcdd7e2/go.mod h1:hynWoNEuDZzS3kA+hZXSHaVa9pcmRqrSQxWuFMeypaM=
 cloudeng.io/logging v0.0.0-20250428223124-bb967ac9f3f8 h1:/mGihcZqyJOS3jQOrTEZIzlLiX8gaDaasP736sTOjqY=
 cloudeng.io/logging v0.0.0-20250428223124-bb967ac9f3f8/go.mod h1:D0TUs3Aiwa1c7xI/TE7JITYnICck34r6DR5twakJjIs=
 github.com/cosnicolaou/automation v0.0.0-20250516220144-b6f3bad30206 h1:+OjXV+TucMYsf4jQP0ztSIRZSApa3GvLTBNxEqKCsoM=

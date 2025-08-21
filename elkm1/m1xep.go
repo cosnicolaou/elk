@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"cloudeng.io/cmdutil/keystore"
+	"cloudeng.io/cmdutil/unsafekeystore"
 	"cloudeng.io/logging/ctxlog"
 	"github.com/cosnicolaou/automation/devices"
 	"github.com/cosnicolaou/automation/net/netutil"
@@ -172,7 +172,7 @@ func (m1 *M1xep) connectTLS(ctx context.Context, idle netutil.IdleReset, version
 	if m1.ControllerConfigCustom.KeyID == "not-set" {
 		return conn, nil
 	}
-	keys := keystore.AuthFromContextForID(ctx, m1.ControllerConfigCustom.KeyID)
+	keys := unsafekeystore.AuthFromContextForID(ctx, m1.ControllerConfigCustom.KeyID)
 	if err := protocol.M1XEPLogin(ctx, session, keys.User, keys.Token); err != nil {
 		conn.Close(ctx)
 		return nil, err
